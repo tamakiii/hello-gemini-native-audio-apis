@@ -5,5 +5,15 @@ export GEMINI_API_KEY
 help:
 	@cat $(firstword $(MAKEFILE_LIST))
 
-build:
-	go build
+build: \
+	bin \
+	bin/chat
+
+clean:
+	rm -rf bin
+
+bin:
+	-mkdir $@
+
+bin/chat: main.go
+	go build -o $@ $<
