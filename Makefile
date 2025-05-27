@@ -7,7 +7,8 @@ help:
 
 build: \
 	bin \
-	bin/chat
+	bin/chat \
+	bin/test_models
 
 clean:
 	rm -rf bin
@@ -16,4 +17,7 @@ bin:
 	-mkdir $@
 
 bin/chat: chat.go
+	go build -o $@ $<
+
+bin/test_models: test_models.go
 	go build -o $@ $<
