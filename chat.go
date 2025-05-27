@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"google.golang.org/genai"
 )
 
-var model = flag.String("model", "gemini-2.0-flash", "the model name, e.g. gemini-2.0-flash")
+var model = flag.String("model", "gemini-2.0-flash", "the model name, e.g. models/gemini-2.0-flash")
+var listModels = flag.Bool("list-models", false, "list available models")
 
 func chat(ctx context.Context, apiKey string) {
 	// Create a client
@@ -22,7 +24,32 @@ func chat(ctx context.Context, apiKey string) {
 		log.Fatalf("Error creating client: %v", err)
 	}
 
-	log.Printf("Model: %s", *model)
+	if *listModels {
+		fmt.Println("Listing available models...")
+		fmt.Println("Available models:")
+		
+		for model, err := range client.Models.All(ctx) {
+			if err != nil {
+				log.Fatalf("Failed to get model: %v", err)
+			}
+			fmt.Printf("- Name: %s\n", model.Name)
+			fmt.Printf("  Version: %s\n", model.Version)
+			fmt.Printf("  DisplayName: %s\n", model.DisplayName)
+			fmt.Printf("  Description: %s\n", model.Description)
+			fmt.Printf("  InputTokenLimit: %d\n", model.InputTokenLimit)
+			fmt.Printf("  OutputTokenLimit: %d\n", model.OutputTokenLimit)
+			fmt.Printf("  SupportedActions: %v\n", model.SupportedActions)
+			fmt.Println()
+		}
+		return
+	}
+
+	// Add "models/" prefix if not already present
+	modelName := *model
+	if !strings.HasPrefix(modelName, "models/") {
+		modelName = "models/" + modelName
+	}
+	log.Printf("Model: %s", modelName)
 
 	// Create a model instance
 	if client.ClientConfig().Backend == genai.BackendVertexAI {
@@ -34,24 +61,30 @@ func chat(ctx context.Context, apiKey string) {
 	var config *genai.GenerateContentConfig = &genai.GenerateContentConfig{Temperature: genai.Ptr[float32](0.5)}
 
 	// Create a new Chat.
-	chat, err := client.Chats.Create(ctx, *model, config, nil)
+	chat, err := client.Chats.Create(ctx, modelName, config, nil)
 	if err != nil {
 		log.Fatalf("Failed to create chat: %v", err)
 	}
 
-	// Send first chat message.
-	result, err := chat.SendMessage(ctx, genai.Part{Text: "What's the weather in San Francisco?"})
-	if err != nil {
-		log.Fatal(err)
+	// Try streaming API since native audio models support bidiGenerateContent
+	fmt.Println("Sending first message (streaming)...")
+	for result, err := range chat.SendMessageStream(ctx, genai.Part{Text: "What's the weather in San Francisco?"}) {
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Print(result.Text())
 	}
-	fmt.Println(result.Text())
+	fmt.Println()
 
 	// Send second chat message.
-	result, err = chat.SendMessage(ctx, genai.Part{Text: "How about New York?"})
-	if err != nil {
-		log.Fatal(err)
+	fmt.Println("Sending second message (streaming)...")
+	for result, err := range chat.SendMessageStream(ctx, genai.Part{Text: "How about New York?"}) {
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Print(result.Text())
 	}
-	fmt.Println(result.Text())
+	fmt.Println()
 }
 
 func main() {
