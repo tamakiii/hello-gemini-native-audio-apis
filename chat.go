@@ -35,6 +35,9 @@ func chat(ctx context.Context, apiKey string) {
 
 	// Create a new Chat.
 	chat, err := client.Chats.Create(ctx, *model, config, nil)
+	if err != nil {
+		log.Fatalf("Failed to create chat: %v", err)
+	}
 
 	// Send first chat message.
 	result, err := chat.SendMessage(ctx, genai.Part{Text: "What's the weather in San Francisco?"})
