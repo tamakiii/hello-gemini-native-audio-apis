@@ -15,5 +15,5 @@ clean:
 bin:
 	-mkdir $@
 
-bin/chat: main.go
+bin/chat: chat.go
 	go build -o $@ $<
