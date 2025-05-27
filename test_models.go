@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"google.golang.org/genai"
+	"github.com/googleapis/go-genai"
 )
 
 func main() {
@@ -17,13 +17,17 @@ func main() {
 		log.Fatal("GEMINI_API_KEY environment variable is not set")
 	}
 
-	// Based on the pkg.go.dev documentation, the correct usage should be:
-	// 1. Create a client
-	// 2. Use the client to interact with models
+	// Create a client with the correct API
+	client, err := genai.NewClient(ctx, &genai.ClientConfig{
+		APIKey:  apiKey,
+		Backend: genai.BackendGoogleAI,
+	})
+	if err != nil {
+		log.Fatalf("Error creating client: %v", err)
+	}
+	defer client.Close()
 
-	// Without seeing the exact API, here are a few possibilities:
-
-	// Option 1: Direct model creation
+	// Test different model names including the native audio dialog model
 	models := []string{
 		"gemini-1.5-flash",
 		"gemini-1.5-pro",
@@ -35,27 +39,21 @@ func main() {
 	for _, modelName := range models {
 		fmt.Printf("\nTesting model: %s\n", modelName)
 
-		// Try different approaches based on common patterns
-		// This will need to be adjusted based on the actual API
+		model := client.GenerativeModel(modelName)
 
-		// Approach 1: Model might be created directly
-		model, err := genai.NewModel(ctx, modelName, genai.WithAPIKey(apiKey))
+		// Simple test prompt
+		resp, err := model.GenerateContent(ctx, genai.Text("Say hello"))
 		if err != nil {
-			fmt.Printf("  ❌ Error creating model: %v\n", err)
-			continue
+			fmt.Printf("  ❌ Error: %v\n", err)
+		} else {
+			fmt.Printf("  ✅ Success!\n")
+			for _, candidate := range resp.Candidates {
+				if candidate.Content != nil {
+					for _, part := range candidate.Content.Parts {
+						fmt.Printf("     Response: %v\n", part)
+					}
+				}
+			}
 		}
-
-		// Approach 2: Or through a client method
-		// client := genai.NewClient(...)
-		// model := client.Model(modelName)
-
-		// Test generation
-		resp, err := model.Generate(ctx, "Say hello")
-		if err != nil {
-			fmt.Printf("  ❌ Error generating: %v\n", err)
-			continue
-		}
-
-		fmt.Printf("  ✅ Success! Response: %v\n", resp)
 	}
 }
